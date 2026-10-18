@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GeoNoteVisual</title>
+<style>
+:root{--bg:#0a0a0b;--pn:rgba(22,22,24,.78);--ln:rgba(255,255,255,.13);--ink:#f2f2f2;--mu:#8d8d92;--cd:#141416;--dot:rgba(255,255,255,.1);--sh:0 10px 40px rgba(0,0,0,.55);color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme=light]{--bg:#f3f3f4;--pn:rgba(255,255,255,.85);--ln:rgba(0,0,0,.15);--ink:#111;--mu:#6b6b70;--cd:#fff;--dot:rgba(0,0,0,.14);--sh:0 10px 30px rgba(0,0,0,.14);color-scheme:light}
+*{box-sizing:border-box}html,body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;overscroll-behavior:none}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+#app{position:relative;height:100%}
+#cv{position:absolute;inset:0;overflow:hidden;touch-action:none;background-image:radial-gradient(circle,var(--dot) 1.2px,transparent 1.6px);cursor:grab;user-select:none;-webkit-user-select:none}
+#cv[data-tool=note]{cursor:copy}#cv[data-tool=delete]{cursor:not-allowed}#cv[data-tool=link]{cursor:crosshair}
+#cv[data-tool=link] .card textarea,#cv[data-tool=delete] .card textarea,#cv[data-tool=note] .card textarea{pointer-events:none}
+#world{position:absolute;left:0;top:0;transform-origin:0 0}
+#svg{position:absolute;left:0;top:0;width:1px;height:1px;overflow:visible;pointer-events:none}
+.hit{fill:none;stroke:transparent;stroke-width:22px;pointer-events:stroke;cursor:pointer}
+.ln{fill:none;stroke-linecap:round;transition:filter .2s}.edge.sel .ln{filter:drop-shadow(0 0 5px var(--ink))}
+.lb{paint-order:stroke;stroke:var(--bg);stroke-width:6px;fill:var(--ink);font-size:12px;pointer-events:all;cursor:pointer}
+.tmp{fill:none;stroke:var(--ink);stroke-width:2;stroke-dasharray:5 5}
+.card{position:absolute;background:var(--cd);border:1px solid var(--ln);border-radius:12px;box-shadow:var(--sh);display:flex;flex-direction:column;transition:border-color .2s,box-shadow .2s;animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:scale(.92)}}
+.card.sel{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink),var(--sh)}
+.bar{height:16px;flex:none;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none}.bar::before{content:"";width:28px;height:3px;border-radius:2px;background:var(--ln)}
+.body{flex:1;min-height:0;display:flex;flex-direction:column;padding:6px}
+.card textarea{flex:1;width:100%;resize:none;background:none;border:0;outline:0;color:var(--ink);font:inherit;min-height:0}
+.card.title textarea{font-size:20px;font-weight:700}
+.card a{font-size:12px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card img{width:100%;height:100%;object-fit:cover;border-radius:6px;cursor:grab;-webkit-user-drag:none}
+.ph{margin:auto;color:var(--mu);font-size:12px;text-align:center}
+.h{position:absolute;width:14px;height:14px;border-radius:50%;background:var(--ink);border:2px solid var(--cd);opacity:0;transition:opacity .15s,transform .15s;cursor:crosshair;touch-action:none}
+.h::after{content:"";position:absolute;inset:-9px}
+.h.t{left:calc(50% - 7px);top:-7px}.h.b{left:calc(50% - 7px);bottom:-7px}.h.l{top:calc(50% - 7px);left:-7px}.h.r{top:calc(50% - 7px);right:-7px}
+.card:hover .h,.card.sel .h,#cv[data-tool=link] .h{opacity:1}.h:hover{transform:scale(1.35)}
+@media(hover:none){.h{opacity:.9}}
+.fl{position:absolute;z-index:5;background:var(--pn);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--ln);box-shadow:var(--sh);border-radius:14px}
+#top{top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;padding:4px 8px}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;letter-spacing:-.01em}.brand svg{width:28px;height:28px}
+#bar{left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:2px;padding:6px;align-items:center;max-width:calc(100% - 16px);overflow-x:auto}
+.sp{width:1px;height:22px;background:var(--ln);margin:0 4px;flex:none}
+.ib{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:0;background:none;color:var(--ink);cursor:pointer;transition:background .15s,transform .1s}
+.ib:hover{background:var(--ln)}.ib:active{transform:scale(.92)}.ib.a{background:var(--ink);color:var(--bg)}
+#ctype{flex:none;background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-radius:8px;padding:6px;font:inherit}
+#ins{top:70px;right:10px;width:var(--iw,270px);max-height:calc(100% - 150px);overflow:auto;padding:14px;transform:translateX(calc(100% + 20px));transition:transform .3s cubic-bezier(.2,.8,.2,1)}#ins.on{transform:none}
+#rs{position:absolute;left:0;top:0;bottom:0;width:8px;cursor:ew-resize;touch-action:none}
+#ins h3{margin:0 0 4px;font-size:13px}#ins label{display:block;margin:10px 0 4px;font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.06em}
+#ins input:not([type=range]),#ins select{width:100%;background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-radius:8px;padding:7px 9px;font:inherit}
+#ins input[type=range]{width:100%}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.seg button,.chips button,.btn{background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-radius:8px;padding:6px;cursor:pointer;font:inherit;transition:.15s}
+.seg button.a,.sw button.a{outline:2px solid var(--ink);outline-offset:1px}
+.sw{display:flex;flex-wrap:wrap;gap:8px}.sw button{width:28px;height:28px;border-radius:50%;border:1px solid var(--ln);cursor:pointer}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.chips button{font-size:12px;padding:4px 8px}
+.danger{margin-top:14px;width:100%}.btn:hover,.chips button:hover,.seg button:hover{border-color:var(--ink)}
+@media(max-width:720px){#ins{top:auto;bottom:84px;left:10px;right:10px;width:auto;max-height:42%;transform:translateY(130%)}#ins.on{transform:none}#rs{display:none}}
+#st{position:absolute;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:20px;transition:opacity .5s,visibility .5s}#st.x{opacity:0;visibility:hidden}
+#st .lg{width:110px;height:110px;animation:fl 4s ease-in-out infinite}@keyframes fl{50%{transform:translateY(-8px)}}
+#st h1{margin:0;font-size:38px;letter-spacing:-.02em}#st p{margin:0;color:var(--mu)}
+#go{margin-top:10px;padding:12px 26px;border-radius:12px;border:0;background:var(--ink);color:var(--bg);font:600 15px system-ui,sans-serif;cursor:pointer;transition:transform .15s}#go:hover{transform:scale(1.05)}
+#dlg{position:absolute;inset:0;z-index:15;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}#dlg.on{display:flex}
+#dlg .box{position:relative;width:min(560px,92%);padding:14px;display:flex;flex-direction:column;gap:10px}
+#dj{width:100%;height:240px;background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-radius:8px;padding:8px;font:12px ui-monospace,monospace;resize:none}
+#dlg .row{display:flex;gap:6px;flex-wrap:wrap}
+#toast{position:absolute;z-index:30;left:50%;top:70px;transform:translate(-50%,-20px);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:10px;opacity:0;transition:.3s;pointer-events:none}#toast.on{opacity:1;transform:translate(-50%,0)}
+.card{cursor:grab}
+.h{z-index:2}.rz{position:absolute;touch-action:none;z-index:1}
+.rz.n,.rz.s{left:10px;right:10px;height:10px;cursor:ns-resize}.rz.n{top:-5px}.rz.s{bottom:-5px}
+.rz.e,.rz.w{top:10px;bottom:10px;width:10px;cursor:ew-resize}.rz.e{right:-5px}.rz.w{left:-5px}
+.rz.ne,.rz.nw,.rz.se,.rz.sw{width:18px;height:18px}
+.rz.ne{top:-6px;right:-6px;cursor:nesw-resize}.rz.nw{top:-6px;left:-6px;cursor:nwse-resize}.rz.se{bottom:-6px;right:-6px;cursor:nwse-resize}.rz.sw{bottom:-6px;left:-6px;cursor:nesw-resize}
+.rz.se::before{content:"";position:absolute;right:7px;bottom:7px;width:12px;height:12px;border-radius:0 0 6px 0;opacity:.5;transition:opacity .15s;background:linear-gradient(135deg,transparent 48%,var(--mu) 48%,var(--mu) 58%,transparent 58%,transparent 70%,var(--mu) 70%,var(--mu) 80%,transparent 80%)}.card:hover .rz.se::before,.card.sel .rz.se::before{opacity:1}
+#ins input[type=color]{height:36px;padding:3px;cursor:pointer}
+#cv{transition:background-position .25s cubic-bezier(.2,.8,.2,1),background-size .25s cubic-bezier(.2,.8,.2,1)}#world{transition:transform .25s cubic-bezier(.2,.8,.2,1)}#cv.live,#cv.live #world{transition:none}
+.sbtn{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 14px;border-radius:10px;border:0;background:var(--ink);color:var(--bg);font:600 14px system-ui,sans-serif;cursor:pointer;transition:transform .1s,opacity .15s}.sbtn:hover{opacity:.88}.sbtn:active{transform:scale(.95)}
+@media(max-width:560px){.brand span{display:none}}
+#shot{position:absolute;inset:0;z-index:15;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.5)}#shot.on{display:flex}#shot .box{position:relative;width:min(560px,92%);max-height:92%;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:10px}#shimg{width:100%;border-radius:8px;border:1px solid var(--ln)}
+#nl{top:70px;left:10px;width:var(--nw,250px);max-height:calc(100% - 150px);display:flex;flex-direction:column;gap:8px;padding:14px;transform:translateX(calc(-100% - 20px));transition:transform .3s cubic-bezier(.2,.8,.2,1)}#nl.on{transform:none}
+#nrs{position:absolute;right:0;top:0;bottom:0;width:8px;cursor:ew-resize;touch-action:none}
+#nc{color:var(--mu);font-weight:400;margin-left:4px}
+#nq{background:var(--cd);color:var(--ink);border:1px solid var(--ln);border-radius:8px;padding:7px 9px;font:inherit;width:100%}
+#nlist{overflow:auto;display:flex;flex-direction:column;gap:4px;min-height:40px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:none;color:var(--ink);text-align:left;cursor:pointer;font:inherit;transition:.15s}
+.ni:hover{background:var(--ln)}.ni.a{border-color:var(--ink)}.ni span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.ni svg{flex:none;color:var(--mu)}
+@media(max-width:720px){#nl{width:min(80%,320px);max-height:calc(100% - 170px)}#nrs{display:none}}
+</style></head>
+<body>
+<div id="app">
+<main id="cv" data-tool="select"><div id="world"><svg id="svg"></svg></div></main>
+<header id="top" class="fl"></header>
+<nav id="bar" class="fl"></nav>
+<aside id="nl" class="fl"><div id="nrs"></div><b>Заметки <span id="nc"></span></b><button class="btn" id="nnew">+ Новая заметка</button><input id="nq" placeholder="Поиск…" aria-label="Поиск"><div id="nlist"></div></aside>
+<aside id="ins" class="fl"><div id="rs"></div><div id="insb"></div></aside>
+<div id="dlg"><div class="box fl"><b>Данные графа (JSON)</b><textarea id="dj" spellcheck="false"></textarea>
+<div class="row"><button class="btn" id="dcopy">Копировать</button><button class="btn" id="dapply">Загрузить из текста</button><button class="btn" id="dfile">Из файла…</button><button class="btn" id="dclose">Закрыть</button></div></div></div>
+<div id="st"><div class="lg" id="lg"></div><h1>GeoNoteVisual</h1><p>Заметки, связи и свободное полотно — всё в одном месте</p><button id="go">Открыть рабочее поле</button></div>
+<div id="shot"><div class="box fl"><b>Картинка готова</b><span style="color:var(--mu)">Нажмите на изображение и удерживайте (или правая кнопка мыши), чтобы сохранить в фото.</span><img id="shimg" alt=""><div class="row"><button class="btn" id="shclose">Закрыть</button></div></div></div>
+<div id="toast"></div>
+<input type="file" id="file" accept="image/*" hidden><input type="file" id="jf" accept=".json,application/json" hidden>
+</div>
+<script>
+const $=s=>document.querySelector(s),cv=$('#cv');
+const IC={mouse:'<path d="M4.04 4.69a.5.5 0 0 1 .65-.65l16 6.5a.5.5 0 0 1-.06.95l-6.12 1.58a2 2 0 0 0-1.44 1.43l-1.58 6.13a.5.5 0 0 1-.95.06z"/>',plus:'<path d="M5 12h14M12 5v14"/>',arrow:'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',redo:'<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',dl:'<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',fit:'<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/>',link:'<path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7"/>',type:'<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',lines:'<path d="M4 6h16M4 12h16M4 18h10"/>',list:'<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',cam:'<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3z"/><circle cx="12" cy="13" r="3"/>',note:'<path d="M16 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9l7-7V5a2 2 0 0 0-2-2z"/><path d="M15 21v-6h6"/>'};
+const I=(n,s=18)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${IC[n]}</svg>`;
+const LOGO='<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M32 4 56 18v28L32 60 8 46V18z" opacity=".45"/><path d="M32 4v16M56 18 42 27M56 46 42 37M32 60V44M8 46l14-9M8 18l14 9"/><rect x="22" y="20" width="20" height="24" rx="3" fill="var(--bg)"/><path d="M27 28h10M27 33h10M27 38h6"/><g fill="currentColor" stroke="none"><circle cx="32" cy="4" r="3"/><circle cx="56" cy="18" r="3"/><circle cx="56" cy="46" r="3"/><circle cx="32" cy="60" r="3"/><circle cx="8" cy="46" r="3"/><circle cx="8" cy="18" r="3"/></g></svg>';
+const LBL={note:'Заметка',title:'Заголовок',text:'Текст',link:'Ссылка',image:'Изображение'},ICO={note:'note',title:'type',text:'lines',link:'link',image:'image'},H={note:150,title:64,text:110,link:90,image:170},WD={note:220,title:260,text:220,link:240,image:240};
+const N={t:[0,-1],b:[0,1],l:[-1,0],r:[1,0]},KEY='gnv1';
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const clamp=k=>Math.min(2.5,Math.max(.2,k));
+const FF='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif',fsOf=c=>c.fs||Math.round(Math.max(8,Math.min(120,(c.type==='title'?20:14)*Math.min(c.w/WD[c.type],c.h/H[c.type])))*10)/10;
+const RB=['#e53935','#fb8c00','#fdd835','#43a047','#29b6f6','#1e5bd8','#8e24aa'];
+const fgFor=h=>{const n=parseInt(h.slice(1),16),l=(.299*(n>>16)+.587*(n>>8&255)+.114*(n&255))/255;return l>.55?'#111':'#f2f2f2'};
+const seed=()=>({cards:[{id:'a',type:'title',x:-130,y:-170,w:260,h:64,text:'GeoNoteVisual',url:''},{id:'b',type:'note',x:-380,y:-10,w:230,h:150,text:'Двойной клик по полю или инструмент «+» — новая карточка. Тяните точки по краям, чтобы соединить карточки.',url:''},{id:'c',type:'note',x:150,y:-10,w:230,h:150,text:'Нажмите на линию: тип, цвет, толщина и подпись меняются в панели.',url:''}],edges:[{id:'e1',from:'a',fs:'b',to:'b',ts:'t',t:'arrow',color:'auto',w:2,label:'связано с'},{id:'e2',from:'a',fs:'b',to:'c',ts:'t',t:'arrow',color:'auto',w:2,label:'следствие'}],view:{x:innerWidth/2,y:innerHeight/2-20,k:innerWidth<720?.62:1},theme:'dark'});
+let S,tool='select',sel=null,undo=[],redo=[],tmp='',mode=null,st;const P=new Map(),els=new Map(),uid=()=>Math.random().toString(36).slice(2,9);
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.cards&&d.edges&&d.view)return d}catch(e){}return null}
+function save(){clearTimeout(st);st=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){toast('Не удалось сохранить: нет места')}},200)}
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2200)}
+/* история */
+const snap=()=>JSON.stringify({cards:S.cards,edges:S.edges});
+function commit(){undo.push(snap());if(undo.length>100)undo.shift();redo=[]}
+function restore(j){const d=JSON.parse(j);S.cards=d.cards;S.edges=d.edges;if(sel&&!(sel.k==='c'?S.cards:S.edges).some(x=>x.id===sel.id))sel=null;draw();save()}
+function doUndo(){if(!undo.length)return toast('Нечего отменять');redo.push(snap());restore(undo.pop())}
+function doRedo(){if(!redo.length)return toast('Нечего повторять');undo.push(snap());restore(redo.pop())}
+const cur=()=>sel&&(sel.k==='e'?S.edges:S.cards).find(x=>x.id===sel.id);
+/* геометрия */
+const anc=(c,s)=>s==='t'?[c.x+c.w/2,c.y]:s==='b'?[c.x+c.w/2,c.y+c.h]:s==='l'?[c.x,c.y+c.h/2]:[c.x+c.w,c.y+c.h/2];
+const near=(c,x,y)=>{const dx=(x-c.x-c.w/2)/c.w,dy=(y-c.y-c.h/2)/c.h;return Math.abs(dx)>Math.abs(dy)?(dx>0?'r':'l'):(dy>0?'b':'t')};
+function geo(p0,n0,p1,n1){const d=Math.max(50,Math.hypot(p1[0]-p0[0],p1[1]-p0[1])*.4),c0=[p0[0]+n0[0]*d,p0[1]+n0[1]*d],c1=[p1[0]+n1[0]*d,p1[1]+n1[1]*d];return{d:`M${p0}C${c0} ${c1} ${p1}`,m:[(p0[0]+3*c0[0]+3*c1[0]+p1[0])/8,(p0[1]+3*c0[1]+3*c1[1]+p1[1])/8]}}
+function head(p,n,w,c){const s=9+w*2,b=[p[0]+n[0]*s,p[1]+n[1]*s],q=[-n[1]*s*.5,n[0]*s*.5];return`<polygon points="${p} ${b[0]+q[0]},${b[1]+q[1]} ${b[0]-q[0]},${b[1]-q[1]}" fill="${c}" stroke="${c}" stroke-linejoin="round"/>`}
+function edges(){let h='';for(const e of S.edges){const a=S.cards.find(c=>c.id===e.from),b=S.cards.find(c=>c.id===e.to);if(!a||!b)continue;
+const p0=anc(a,e.fs),p1=anc(b,e.ts),g=geo(p0,N[e.fs],p1,N[e.ts]),w=e.w||2,cl=!e.color||e.color==='auto'?'var(--ink)':e.color,on=sel&&sel.k==='e'&&sel.id===e.id;
+h+=`<g class="edge${on?' sel':''}" data-id="${e.id}"><path d="${g.d}" class="hit"/><path d="${g.d}" class="ln" stroke="${cl}" stroke-width="${w}"${e.t==='dashed'?' stroke-dasharray="9 8"':''}/>`;
+if(e.t==='arrow'||e.t==='both')h+=head(p1,N[e.ts],w,cl);if(e.t==='both')h+=head(p0,N[e.fs],w,cl);
+if(e.label)h+=`<text class="lb" x="${g.m[0]}" y="${g.m[1]}" text-anchor="middle" dy=".35em">${esc(e.label)}</text>`;h+='</g>'}
+$('#svg').innerHTML=h+tmp}
+/* карточки */
+function mk(c){const d=document.createElement('div'),id=c.id;d.dataset.id=id;
+d.innerHTML=`<div class="bar"></div><div class="body"></div>`+['t','r','b','l'].map(s=>`<i class="h ${s}" data-s="${s}"></i>`).join('')+['n','s','e','w','ne','nw','se','sw'].map(r=>`<i class="rz ${r}" data-d="${r}"></i>`).join('');
+const b=d.querySelector('.body');
+if(c.type==='image')b.innerHTML='<img draggable="false" alt=""><div class="ph">Загрузите картинку в панели</div>';
+else{b.innerHTML='<textarea spellcheck="false" placeholder="Текст…"></textarea>'+(c.type==='link'?'<a target="_blank" rel="noopener"></a>':'');const t=b.firstChild;
+t.oninput=()=>{const o=S.cards.find(x=>x.id===id);if(!o)return;if(!t._c){commit();t._c=1}o.text=t.value;save();nlist()};t.onblur=()=>t._c=0}
+return d}
+function upd(d,c){d.style.cssText=`left:${c.x}px;top:${c.y}px;width:${c.w}px;height:${c.h}px`+(/^#[0-9a-f]{6}$/i.test(c.bg||'')?`;--cd:${c.bg};--ink:${fgFor(c.bg)};--mu:${fgFor(c.bg)==='#111'?'#555':'#aaa'}`:'');d.className='card '+c.type+(sel&&sel.k==='c'&&sel.id===c.id?' sel':'');
+const t=d.querySelector('textarea');if(t&&t.value!==(c.text||'')&&document.activeElement!==t)t.value=c.text||'';if(t)t.style.fontSize=fsOf(c)+'px';
+const a=d.querySelector('a');if(a){a.href=/^https?:/i.test(c.url||'')?c.url:'#';a.textContent=c.url||'адрес — в панели справа';a.style.fontSize=Math.max(8,fsOf(c)*.85)+'px'}
+const im=d.querySelector('img');if(im){if(c.url){if(im.getAttribute('src')!==c.url)im.src=c.url}else im.removeAttribute('src');im.style.display=c.url?'':'none';d.querySelector('.ph').style.display=c.url?'none':''}}
+function draw(){const W=$('#world'),ids=new Set(S.cards.map(c=>c.id));
+for(const[id,e]of els)if(!ids.has(id)){e.remove();els.delete(id)}
+for(const c of S.cards){let e=els.get(c.id);if(!e){e=mk(c);W.appendChild(e);els.set(c.id,e)}upd(e,c)}
+edges();insp();nlist()}
+function view(){const v=S.view;$('#world').style.transform=`translate(${v.x}px,${v.y}px) scale(${v.k})`;const g=24*v.k;cv.style.backgroundSize=`${g}px ${g}px`;cv.style.backgroundPosition=`${v.x}px ${v.y}px`}
+const toW=(x,y)=>{const r=cv.getBoundingClientRect(),v=S.view;return[(x-r.left-v.x)/v.k,(y-r.top-v.y)/v.k]};
+function newc(c){commit();S.cards.push(c);sel={k:'c',id:c.id};setTool('select');draw();save();if(c.type!=='image')setTimeout(()=>{const t=els.get(c.id)?.querySelector('textarea');t&&t.focus()},60)}
+function addCard(x,y,type=$('#ctype').value){const w=WD[type];newc({id:uid(),type,x:x-w/2,y:y-30,w,h:H[type],text:'',url:''})}
+function delCard(id){S.cards=S.cards.filter(c=>c.id!==id);S.edges=S.edges.filter(e=>e.from!==id&&e.to!==id);if(sel&&sel.id===id)sel=null;draw();save()}
+function delEdge(id){S.edges=S.edges.filter(e=>e.id!==id);if(sel&&sel.id===id)sel=null;draw();save()}
+function pick(cb){const f=$('#file');f.onchange=()=>{const fl=f.files[0];f.value='';if(!fl)return;const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,700/im.width),k=document.createElement('canvas');k.width=im.width*s;k.height=im.height*s;k.getContext('2d').drawImage(im,0,0,k.width,k.height);cb(k.toDataURL('image/jpeg',.82))};im.src=r.result};r.readAsDataURL(fl)};f.click()}
+/* указатели: мышь и касания */
+cv.addEventListener('pointerdown',e=>{
+if(e.target.closest('input,textarea,a,select'))return;
+cv.setPointerCapture(e.pointerId);P.set(e.pointerId,[e.clientX,e.clientY]);cv.classList.add('live');
+if(P.size===2){const[a,b]=[...P.values()];mode={t:'pinch',d:Math.hypot(a[0]-b[0],a[1]-b[1])||1,k:S.view.k,v:{...S.view},c:[(a[0]+b[0])/2,(a[1]+b[1])/2]};return}
+const t=e.target,cd=t.closest('.card'),c=cd&&S.cards.find(x=>x.id===cd.dataset.id),eg=t.closest('.edge'),[wx,wy]=toW(e.clientX,e.clientY);
+if(tool==='delete'){if(c){commit();delCard(c.id)}else if(eg){commit();delEdge(eg.dataset.id)}mode=null;return}
+if(c&&t.closest('.rz')){sel={k:'c',id:c.id};mode={t:'resize',c,d:t.dataset.d,done:0,x0:c.x,y0:c.y,x1:c.x+c.w,y1:c.y+c.h};draw();return}
+if(c&&t.closest('.h')){mode={t:'link',c,s:t.dataset.s};return}
+if(tool==='link'&&c){mode={t:'link',c,s:near(c,wx,wy)};return}
+if(c){sel={k:'c',id:c.id};mode={t:'drag',c,ox:wx-c.x,oy:wy-c.y,done:0};draw();return}
+if(eg){sel={k:'e',id:eg.dataset.id};draw();return}
+if(c){sel={k:'c',id:c.id};draw();return}
+if(tool==='note'){addCard(wx,wy);return}
+sel=null;mode={t:'pan',x:e.clientX,y:e.clientY,v:{...S.view}};draw()});
+cv.addEventListener('pointermove',e=>{
+if(P.has(e.pointerId))P.set(e.pointerId,[e.clientX,e.clientY]);if(!mode)return;const[wx,wy]=toW(e.clientX,e.clientY);
+if(mode.t==='pinch'){if(P.size<2)return;const[a,b]=[...P.values()],r=cv.getBoundingClientRect(),m=mode,k=clamp(m.k*Math.hypot(a[0]-b[0],a[1]-b[1])/m.d),w0=[(m.c[0]-r.left-m.v.x)/m.v.k,(m.c[1]-r.top-m.v.y)/m.v.k];S.view.k=k;S.view.x=(a[0]+b[0])/2-r.left-w0[0]*k;S.view.y=(a[1]+b[1])/2-r.top-w0[1]*k;view()}
+else if(mode.t==='resize'){if(!mode.done){commit();mode.done=1}const c=mode.c,d=mode.d,M=20;let{x0,y0,x1,y1}=mode;if(d.includes('e'))x1=Math.max(x0+M,Math.round(wx));if(d.includes('w'))x0=Math.min(x1-M,Math.round(wx));if(d.includes('s'))y1=Math.max(y0+M,Math.round(wy));if(d.includes('n'))y0=Math.min(y1-M,Math.round(wy));c.x=x0;c.y=y0;c.w=x1-x0;c.h=y1-y0;upd(els.get(c.id),c);edges()}else if(mode.t==='pan'){S.view.x=mode.v.x+e.clientX-mode.x;S.view.y=mode.v.y+e.clientY-mode.y;view()}
+else if(mode.t==='drag'){if(!mode.done){commit();mode.done=1}const c=mode.c;c.x=Math.round(wx-mode.ox);c.y=Math.round(wy-mode.oy);upd(els.get(c.id),c);edges()}
+else if(mode.t==='link'){const a=anc(mode.c,mode.s),el=document.elementFromPoint(e.clientX,e.clientY),cd=el&&el.closest('.card'),c2=cd&&cd.dataset.id!==mode.c.id&&S.cards.find(x=>x.id===cd.dataset.id);let p=[wx,wy],n=[0,0];if(c2){const s=near(c2,wx,wy);p=anc(c2,s);n=N[s]}tmp=`<path class="tmp" d="${geo(a,N[mode.s],p,n).d}"/>`;edges()}});
+const up=e=>{P.delete(e.pointerId);if(!P.size)cv.classList.remove('live');if(!mode)return;
+if(mode.t==='pinch'){if(P.size<2){mode=null;save()}return}
+if(mode.t==='link'){tmp='';const el=document.elementFromPoint(e.clientX,e.clientY),cd=el&&el.closest('.card'),c2=cd&&S.cards.find(x=>x.id===cd.dataset.id);
+if(c2&&c2!==mode.c){const[wx,wy]=toW(e.clientX,e.clientY),ts=el.classList.contains('h')?el.dataset.s:near(c2,wx,wy),ed={id:uid(),from:mode.c.id,fs:mode.s,to:c2.id,ts,t:'arrow',color:'auto',w:2,label:''};commit();S.edges.push(ed);sel={k:'e',id:ed.id}}}
+mode=null;draw();save()};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();const r=cv.getBoundingClientRect(),v=S.view,k=clamp(v.k*Math.exp(-e.deltaY*.0015)),x=e.clientX-r.left,y=e.clientY-r.top;v.x=x-(x-v.x)*k/v.k;v.y=y-(y-v.y)*k/v.k;v.k=k;view();save()},{passive:false});
+cv.addEventListener('dblclick',e=>{const el=document.elementFromPoint(e.clientX,e.clientY);if(el&&!el.closest('.card,.edge')){const[x,y]=toW(e.clientX,e.clientY);addCard(x,y)}});
+cv.addEventListener('focusin',e=>{const cd=e.target.closest('.card');if(cd&&!(sel&&sel.k==='c'&&sel.id===cd.dataset.id)){sel={k:'c',id:cd.dataset.id};draw()}});
+/* панель свойств */
+function insp(){const p=$('#ins'),b=$('#insb'),o=cur();if(!o){p.classList.remove('on');return}p.classList.add('on');
+if(sel.k==='e')b.innerHTML=`<h3>Связь</h3><label>Тип</label><div class="seg">${[['line','Линия'],['arrow','→'],['both','↔'],['dashed','Пунктир']].map(([v,l])=>`<button data-t="${v}" class="${o.t===v?'a':''}">${l}</button>`).join('')}</div><label>Цвет</label><div class="sw">${['auto','#8a8a8a','#4d4d4d','#d0d0d0',...RB].map(c=>`<button data-c="${c}" style="background:${c==='auto'?'var(--ink)':c}" class="${o.color===c?'a':''}" aria-label="цвет"></button>`).join('')}</div><label>Толщина</label><input type="range" min="1" max="8" value="${o.w||2}" id="rw"><label>Подпись</label><input id="rl" value="${esc(o.label)}" placeholder="связано с"><div class="chips">${['связано с','причина','следствие'].map(x=>`<button data-l="${x}">${x}</button>`).join('')}</div><button class="btn danger" id="rd">Удалить связь</button>`;
+else b.innerHTML=`<h3>Карточка</h3><label>Тип</label><select id="rt">${Object.entries(LBL).map(([k,v])=>`<option value="${k}"${o.type===k?' selected':''}>${v}</option>`).join('')}</select>`+(o.type==='link'?`<label>Адрес</label><input id="ru" value="${esc(o.url)}" placeholder="https://…">`:'')+(o.type==='image'?`<label>Изображение</label><button class="btn" id="up" style="width:100%">Загрузить файл</button>`:'')+`<label>Цвет карточки</label><div class="sw">${['','#2a2a2e','#6b6b70','#d4d4d8','#ffffff','#000000',...RB].map(c=>`<button data-bg="${c}" style="background:${c||'var(--cd)'}" class="${(o.bg||'')===c?'a':''}" aria-label="цвет"></button>`).join('')}</div><input type="color" id="cc" value="${/^#[0-9a-f]{6}$/i.test(o.bg||'')?o.bg:'#2a2a2e'}" style="margin-top:8px" aria-label="Свой цвет"><label>Ширина</label><input type="number" min="20" step="10" value="${o.w}" id="cw"><label>Высота</label><input type="number" min="20" step="10" value="${o.h}" id="ch"><label>Размер текста</label><input type="number" min="6" max="300" value="${o.fs||''}" placeholder="авто" id="cf"><button class="btn danger" id="cd">Удалить карточку</button>`}
+const ib=$('#insb');
+ib.addEventListener('click',e=>{const b=e.target.closest('button'),o=cur();if(!b||!o)return;
+if(b.id==='cd'){commit();delCard(o.id);return}if(b.id==='rd'){commit();delEdge(o.id);return}
+if(b.id==='up'){pick(u=>{commit();o.url=u;draw();save()});return}
+commit();if(b.dataset.t)o.t=b.dataset.t;else if(b.dataset.c)o.color=b.dataset.c;else if(b.dataset.bg!==undefined)o.bg=b.dataset.bg;else if(b.dataset.l!==undefined)o.label=b.dataset.l;draw();save()});
+ib.addEventListener('input',e=>{const o=cur(),i=e.target;if(!o)return;if(!i._c){commit();i._c=1}if(i.id==='rw')o.w=+i.value;if(i.id==='rl')o.label=i.value;if(i.id==='ru')o.url=i.value;if(i.id==='cc')o.bg=i.value;if(i.id==='cf')o.fs=+i.value>0?+i.value:0;if(i.id==='cw')o.w=Math.max(20,+i.value||20);if(i.id==='ch')o.h=Math.max(20,+i.value||20);edges();if(sel.k==='c')upd(els.get(o.id),o);save()});
+ib.addEventListener('change',e=>{e.target._c=0;if(e.target.id==='rt'){const o=cur();commit();o.type=e.target.value;o.h=H[o.type];els.get(o.id)?.remove();els.delete(o.id);draw();save()}});
+$('#rs').onpointerdown=e=>{e.preventDefault();const mv=ev=>{const w=Math.min(520,Math.max(220,innerWidth-ev.clientX-10));document.documentElement.style.setProperty('--iw',w+'px');S.iw=w},u=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',u);save()};addEventListener('pointermove',mv);addEventListener('pointerup',u)};
+/* панели и инструменты */
+const TB=[['select','mouse','Выделить'],['note','plus','Создать заметку'],['link','arrow','Создать связь'],['delete','trash','Удалить'],0,['undo','undo','Отменить'],['redo','redo','Повторить']];
+$('#bar').innerHTML=TB.map(t=>t?`<button class="ib" data-a="${t[0]}" title="${t[2]}" aria-label="${t[2]}">${I(t[1],20)}</button>`:'<i class="sp"></i>').join('')+`<i class="sp"></i><select id="ctype" aria-label="Тип карточки">${Object.entries(LBL).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>`;
+$('#top').innerHTML=`<div class="brand">${LOGO}<span>GeoNoteVisual</span></div><div style="display:flex;align-items:center;gap:4px"><button class="sbtn" data-a="shot">${I('cam',18)}<span>Сохранить</span></button>${[['notes','list','Заметки'],['fit','fit','Показать всё'],['data','dl','Сохранить / загрузить граф'],['theme','sun','Тема']].map(t=>`<button class="ib" data-a="${t[0]}" title="${t[2]}" aria-label="${t[2]}">${I(t[1],20)}</button>`).join('')}</div>`;
+$('#lg').innerHTML=LOGO;
+function setTool(t){tool=t;cv.dataset.tool=t;document.querySelectorAll('#bar [data-a]').forEach(b=>b.classList.toggle('a',b.dataset.a===t))}
+function setTheme(t){S.theme=t;document.documentElement.dataset.theme=t;save()}
+function fit(){const r=cv.getBoundingClientRect();if(!S.cards.length){S.view={x:r.width/2,y:r.height/2,k:1}}else{let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;S.cards.forEach(c=>{x0=Math.min(x0,c.x);y0=Math.min(y0,c.y);x1=Math.max(x1,c.x+c.w);y1=Math.max(y1,c.y+c.h)});const k=clamp(Math.min((r.width-60)/(x1-x0),(r.height-190)/(y1-y0),1.2));S.view={k,x:(r.width-(x1-x0)*k)/2-x0*k,y:(r.height-(y1-y0)*k)/2-y0*k+20}}view();save()}
+document.addEventListener('click',e=>{const b=e.target.closest('button[data-a]');if(!b)return;const a=b.dataset.a;
+if(['select','note','link','delete'].includes(a))setTool(a);else if(a==='undo')doUndo();else if(a==='redo')doRedo();else if(a==='fit')fit();else if(a==='notes')$('#nl').classList.toggle('on');else if(a==='shot')saveShot();else if(a==='theme')setTheme(S.theme==='light'?'dark':'light');else if(a==='data'){$('#dj').value=JSON.stringify({cards:S.cards,edges:S.edges},null,1);$('#dlg').classList.add('on')}});
+$('#dclose').onclick=()=>$('#dlg').classList.remove('on');
+$('#dcopy').onclick=async()=>{const d=$('#dj');try{await navigator.clipboard.writeText(d.value)}catch(x){d.select();document.execCommand('copy')}toast('Скопировано')};
+$('#dapply').onclick=()=>{try{const d=JSON.parse($('#dj').value);if(!Array.isArray(d.cards)||!Array.isArray(d.edges))throw 0;commit();S.cards=d.cards;S.edges=d.edges;sel=null;draw();fit();$('#dlg').classList.remove('on');toast('Граф загружен')}catch(x){toast('Неверный формат JSON')}};
+$('#dfile').onclick=()=>$('#jf').click();
+$('#jf').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)f.text().then(t=>{$('#dj').value=t;$('#dapply').click()})};
+addEventListener('keydown',e=>{const f=e.target.closest&&e.target.closest('input,textarea,select'),m=e.ctrlKey||e.metaKey,k=e.key.toLowerCase();
+if(m&&k==='z'&&!f){e.preventDefault();e.shiftKey?doRedo():doUndo()}else if(m&&k==='y'&&!f){e.preventDefault();doRedo()}
+else if((e.key==='Delete'||e.key==='Backspace')&&!f&&sel){commit();sel.k==='c'?delCard(sel.id):delEdge(sel.id)}else if(e.key==='Escape'){sel=null;setTool('select');draw()}});
+$('#go').onclick=()=>$('#st').classList.add('x');
+/* картинка */
+const rr=(g,x,y,w,h,r)=>{r=Math.min(r,w/2,h/2);g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
+const hp=(p,n,w)=>{const s=9+w*2,b=[p[0]+n[0]*s,p[1]+n[1]*s],q=[-n[1]*s*.5,n[0]*s*.5];return new Path2D(`M${p}L${b[0]+q[0]},${b[1]+q[1]}L${b[0]-q[0]},${b[1]-q[1]}Z`)};
+function wrap(g,t,mw){const o=[];for(const p of String(t||'').split('\n')){let l='';for(const w of p.split(' ')){const s=l?l+' '+w:w;if(g.measureText(s).width<=mw){l=s;continue}if(l)o.push(l);l='';for(const ch of w){if(g.measureText(l+ch).width>mw&&l){o.push(l);l=ch}else l+=ch}}o.push(l)}return o}
+async function render(){const cs=S.cards,R=getComputedStyle(document.documentElement),V=n=>R.getPropertyValue(n).trim(),bg=V('--bg'),ink=V('--ink'),cd=V('--cd'),ln=V('--ln'),mu=V('--mu'),dot=V('--dot'),ims={};
+await Promise.all(cs.filter(c=>c.type==='image'&&c.url).map(c=>new Promise(r=>{const im=new Image();im.onload=()=>{ims[c.id]=im;r()};im.onerror=r;im.src=c.url})));
+let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;cs.forEach(c=>{x0=Math.min(x0,c.x);y0=Math.min(y0,c.y);x1=Math.max(x1,c.x+c.w);y1=Math.max(y1,c.y+c.h)});
+const pad=100,W=x1-x0+pad*2,Hh=y1-y0+pad*2,sc=Math.min(2,4096/Math.max(W,Hh)),k=document.createElement('canvas');k.width=Math.ceil(W*sc);k.height=Math.ceil(Hh*sc);
+const g=k.getContext('2d');g.scale(sc,sc);g.translate(pad-x0,pad-y0);g.fillStyle=bg;g.fillRect(x0-pad,y0-pad,W,Hh);
+if(W*Hh/576<40000){g.fillStyle=dot;for(let x=Math.floor((x0-pad)/24)*24;x<x1+pad;x+=24)for(let y=Math.floor((y0-pad)/24)*24;y<y1+pad;y+=24)g.fillRect(x,y,1.6,1.6)}
+const labs=[];
+for(const e of S.edges){const a=cs.find(c=>c.id===e.from),b=cs.find(c=>c.id===e.to);if(!a||!b)continue;const p0=anc(a,e.fs),p1=anc(b,e.ts),q=geo(p0,N[e.fs],p1,N[e.ts]),w=e.w||2,cl=!e.color||e.color==='auto'?ink:e.color;
+g.strokeStyle=cl;g.fillStyle=cl;g.lineWidth=w;g.lineCap='round';g.lineJoin='round';g.setLineDash(e.t==='dashed'?[9,8]:[]);g.stroke(new Path2D(q.d));g.setLineDash([]);
+if(e.t==='arrow'||e.t==='both'){const h=hp(p1,N[e.ts],w);g.fill(h);g.stroke(h)}if(e.t==='both'){const h=hp(p0,N[e.fs],w);g.fill(h);g.stroke(h)}if(e.label)labs.push([q.m,e.label])}
+for(const c of cs){const own=/^#[0-9a-f]{6}$/i.test(c.bg||''),fill=own?c.bg:cd,fg=own?fgFor(c.bg):ink,sub=own?(fg==='#111'?'#555':'#aaa'):mu;
+g.save();rr(g,c.x,c.y,c.w,c.h,12);g.shadowColor='rgba(0,0,0,.35)';g.shadowBlur=18;g.shadowOffsetY=6;g.fillStyle=fill;g.fill();g.restore();
+g.save();rr(g,c.x,c.y,c.w,c.h,12);g.strokeStyle=ln;g.lineWidth=1;g.stroke();g.clip();g.fillStyle=ln;g.fillRect(c.x+c.w/2-14,c.y+6,28,3);
+if(c.type==='image'){const im=ims[c.id];if(im){const bx=c.x+6,by=c.y+16,bw=c.w-12,bh=c.h-22;let sw=im.width,sh=im.height,sx=0,sy=0;if(im.width/im.height>bw/bh){sw=im.height*bw/bh;sx=(im.width-sw)/2}else{sh=im.width*bh/bw;sy=(im.height-sh)/2}g.save();rr(g,bx,by,bw,bh,6);g.clip();g.drawImage(im,sx,sy,sw,sh,bx,by,bw,bh);g.restore()}}
+else{const fs=fsOf(c);g.font=`${c.type==='title'?700:400} ${fs}px ${FF}`;g.fillStyle=fg;g.textBaseline='top';wrap(g,c.text,c.w-20).forEach((l,i)=>g.fillText(l,c.x+9,c.y+24+i*fs*1.4));if(c.type==='link'&&c.url){g.font=`${fs*.85}px ${FF}`;g.fillStyle=sub;g.fillText(c.url,c.x+9,c.y+c.h-fs*1.2-6)}}
+g.restore()}
+g.font=`12px ${FF}`;g.textAlign='center';g.textBaseline='middle';g.lineWidth=6;g.lineJoin='round';for(const[m,t]of labs){g.strokeStyle=bg;g.strokeText(t,m[0],m[1]);g.fillStyle=ink;g.fillText(t,m[0],m[1])}
+return k}
+async function saveShot(){if(!S.cards.length)return toast('Поле пустое');toast('Готовлю картинку…');
+try{const k=await render(),blob=await new Promise(r=>k.toBlob(r,'image/png')),name='GeoNoteVisual-'+new Date().toISOString().slice(0,10)+'.png';let d=null;try{if(typeof claude!=='undefined')d=await claude.use('downloads')}catch(x){}
+if(d){try{await d.save({filename:name,data:blob});toast('Картинка сохранена');return}catch(x){if(x&&x.code==='declined')return}}
+const f=new File([blob],name,{type:'image/png'});if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f]});return}catch(x){if(x&&x.name==='AbortError')return}}
+$('#shimg').src=k.toDataURL('image/png');$('#shot').classList.add('on')}catch(x){toast('Не удалось создать картинку')}}
+$('#shclose').onclick=()=>$('#shot').classList.remove('on');
+/* заметки */
+const ttl=c=>{const s=(c.text||'').trim().split('\n')[0];return s||(c.type==='image'?'Изображение':c.type==='link'?(c.url||'Ссылка'):'Пустая заметка')};
+function nlist(){const q=($('#nq').value||'').toLowerCase(),L=S.cards.filter(c=>!q||(c.text||'').toLowerCase().includes(q)||(c.url||'').toLowerCase().includes(q));$('#nc').textContent=S.cards.length;$('#nlist').innerHTML=L.map(c=>`<button class="ni${sel&&sel.k==='c'&&sel.id===c.id?' a':''}" data-id="${c.id}">${I(ICO[c.type],16)}<span>${esc(ttl(c))}</span></button>`).join('')||'<div class="ph">Ничего нет</div>'}
+$('#nq').oninput=nlist;
+$('#nlist').onclick=e=>{const b=e.target.closest('.ni'),c=b&&S.cards.find(x=>x.id===b.dataset.id);if(!c)return;sel={k:'c',id:c.id};const r=cv.getBoundingClientRect(),v=S.view;v.x=r.width/2-(c.x+c.w/2)*v.k;v.y=r.height/2-(c.y+c.h/2)*v.k;view();draw();save();if(innerWidth<720)$('#nl').classList.remove('on')};
+$('#nnew').onclick=()=>{const r=cv.getBoundingClientRect(),[x,y]=toW(r.left+r.width/2,r.top+r.height/2);addCard(x,y,'note');if(innerWidth<720)$('#nl').classList.remove('on')};
+$('#nrs').onpointerdown=e=>{e.preventDefault();const mv=ev=>{const w=Math.min(420,Math.max(200,ev.clientX-10));document.documentElement.style.setProperty('--nw',w+'px');S.nw=w},u=()=>{removeEventListener('pointermove',mv);removeEventListener('pointerup',u);save()};addEventListener('pointermove',mv);addEventListener('pointerup',u)};
+/* запуск */
+const sv=load();S=sv||seed();if(S.iw)document.documentElement.style.setProperty('--iw',S.iw+'px');if(S.nw)document.documentElement.style.setProperty('--nw',S.nw+'px');if(innerWidth>=720)$('#nl').classList.add('on');
+document.documentElement.dataset.theme=S.theme||'dark';setTool('select');view();draw();if(!sv)save();
+</script></body></html>
